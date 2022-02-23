@@ -1,6 +1,7 @@
-import praw, os, requests
+import praw, os, requests, datetime
 import unicodedata, re
 import threading, queue
+import pandas as pd
 import tokens
 
 def legalize(text, allow_unicode=False):
@@ -14,7 +15,7 @@ def legalize(text, allow_unicode=False):
 
 def download(url, filepath):
     try:
-        print(f'downloading {url} in {images_path}')
+        print(f'downloading {url} to {filepath}')
         r = requests.get(url, allow_redirects=True)
         with open(filepath, 'wb') as file:
             file.write(r.content)
@@ -36,12 +37,12 @@ def worker():
 reddit = praw.Reddit(client_id=tokens.REDDIT_ID, client_secret=tokens.REDDIT_SECRET, user_agent=tokens.REDDIT_AGENT)
 subreddit = reddit.subreddit('memes')
 
-images_path = './images/'
+images_root = './images'
+images_path = f'{images_root}/{datetime.date.today().strftime("%m-%d-%y")}'
 image_exts = ['.png', '.jpg', '.jpeg']
-images = {}
 
 def main():
-    posts = subreddit.top('all', limit=None)
+    posts = subreddit.hot(limit=None)
     if not os.path.exists(images_path):
         os.makedirs(images_path)
 
@@ -50,13 +51,37 @@ def main():
         t.daemon = True
         t.start()
 
+    count = 0
+    ids, titles, filenames, urls, scores, timestamps  = ([] for x in range(6))
+
     for post in posts:
-        title = post.title
         url = post.url
         _, ext = os.path.splitext(url)
-        filepath = images_path + legalize(title) + ext
         if ext in image_exts:
-            q.put([url, filepath])
+            ids.append(count)
+            urls.append(url)
+            scores.append(post.score)
+            timestamps.append(datetime.datetime.fromtimestamp(post.created))
+
+            legal_title = legalize(post.title)
+            if (post.title in titles):
+                legal_title += f'({count})'
+            filename = f'{images_path}/{legal_title}{ext}'
+
+            titles.append(post.title)
+            filenames.append(filename)
+            count += 1
+            q.put([url, filename])
     q.join()
+
+    dataframe = pd.DataFrame({
+        'IDs': ids,
+        'Filenames': filenames,
+        'Titles': titles,
+        'Urls': urls,
+        'Scores': scores,
+        'Timestamps': timestamps
+    })
+    csv = dataframe.to_csv(f'{images_path}/data.csv', header=True)
 
 main()
