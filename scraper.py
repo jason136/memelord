@@ -4,6 +4,9 @@ import threading, queue
 import pandas as pd
 import tokens
 
+number_of_threads = 30
+q = queue.Queue()
+
 def legalize(text, allow_unicode=False):
     text = str(text)
     if allow_unicode:
@@ -13,20 +16,16 @@ def legalize(text, allow_unicode=False):
     text = re.sub(r'[^\w\s-]', '', text.lower())
     return re.sub(r'[-\s]+', '-', text).strip('-_')
 
-def download(url, filepath):
+def download(url, filename):
     try:
-        print(f'downloading {url} to {filepath}')
+        print(f'downloading {url} to {filename}')
         r = requests.get(url, allow_redirects=True)
-        with open(filepath, 'wb') as file:
+        with open(filename, 'wb') as file:
             file.write(r.content)
-        return True
     except Exception as e:
         print(f'error while downloading {url}: {e}')
-        if download(url, filepath):
-            return True
-
-q = queue.Queue()
-number_of_threads = 30
+        q.put([url, filename])
+        q.join()
 
 def worker():
     while True:
@@ -46,9 +45,6 @@ def main():
     subreddit = reddit.subreddit('memes')
     posts = subreddit.top('day', limit=None)
 
-    # if not os.path.exists(memes_root):
-    #     os.makedirs(memes_root)
-
     for i in range(number_of_threads):
         t = threading.Thread(target=worker)
         t.daemon = True
@@ -61,7 +57,7 @@ def main():
             date_created = datetime.datetime.fromtimestamp(post.created).strftime("%m-%d-%y")
             if (date_created not in dicts):
                 if (os.path.exists(f'{memes_root}/{date_created}/{date_created}.csv')):
-                    dicts[date_created] = pd.read_csv(f'{memes_root}/{date_created}/{date_created}.csv').to_dict()
+                    dicts[date_created] = pd.read_csv(f'{memes_root}/{date_created}/{date_created}.csv', usecols=keys).to_dict(orient='list')
                 else:
                     dicts[date_created] = dict.fromkeys(keys)
                     for key in keys:
@@ -79,10 +75,8 @@ def main():
             data['scores'].append(post.score)
             data['timestamps'].append(datetime.datetime.fromtimestamp(post.created))
 
-            legal_title = legalize(post.title)
-            if (post.title in data['titles']):
-                legal_title += f' ({id})'
-            filename = f'{memes_root}/{date_created}/{legal_title}{ext}'
+            legal_filename = legalize(f'{post.title}_({id})')
+            filename = f'{memes_root}/{date_created}/{legal_filename}{ext}'
 
             data['titles'].append(post.title)
             data['filenames'].append(filename)
