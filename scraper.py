@@ -2,7 +2,7 @@ import praw, os, requests, datetime
 import unicodedata, re
 import threading, queue
 import pandas as pd
-import tokens
+import tokens, globals
 
 number_of_threads = 30
 q = queue.Queue()
@@ -33,13 +33,12 @@ def worker():
         download(meme[0], meme[1])
         q.task_done()
 
-memes_root = './memes'
-image_exts = ['.png', '.jpg', '.jpeg']
-
-keys = ['ids', 'titles', 'filenames', 'urls', 'scores', 'timestamps']
-dicts = {}
 
 def main():
+    image_exts = ['.png', '.jpg', '.jpeg']
+    dicts = {}
+    keys = globals.keys
+    memes_root = globals.memes_root
     
     reddit = praw.Reddit(client_id=tokens.REDDIT_ID, client_secret=tokens.REDDIT_SECRET, user_agent=tokens.REDDIT_AGENT)
     subreddit = reddit.subreddit('memes')
@@ -49,7 +48,7 @@ def main():
         t = threading.Thread(target=worker)
         t.daemon = True
         t.start()
-
+    download_count = 0
     for post in posts:
         url = post.url
         _, ext = os.path.splitext(url)
@@ -66,25 +65,28 @@ def main():
                         os.makedirs(f'{memes_root}/{date_created}')
             data = dicts[date_created]
 
-            id = url[18:31]
-            if (id in data['ids']):
+            if (url in data['urls']):
                 continue 
 
-            data['ids'].append(id)
             data['urls'].append(url)
             data['scores'].append(post.score)
             data['timestamps'].append(datetime.datetime.fromtimestamp(post.created))
 
-            legal_filename = legalize(f'{post.title}_({id})')
+            legal_filename = f'{len(data["titles"])}_{legalize(post.title)}'
             filename = f'{memes_root}/{date_created}/{legal_filename}{ext}'
 
             data['titles'].append(post.title)
             data['filenames'].append(filename)
+            data['extracted text'].append('')
+            download_count += 1
             q.put([url, filename])
     q.join()
-
+    
     for date, data in dicts.items():
         dataframe = pd.DataFrame.from_dict(data)
         csv = dataframe.to_csv(f'{memes_root}/{date}/{date}.csv', index=True, header=True)
 
-main()
+    input(f"{download_count} files downloaded and {len(dicts.keys())} csv's written")
+
+if __name__ == '__main__':
+    main()
