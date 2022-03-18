@@ -48,6 +48,7 @@ def main():
         t = threading.Thread(target=worker)
         t.daemon = True
         t.start()
+        
     download_count = 0
     for post in posts:
         url = post.url

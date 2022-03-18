@@ -13,7 +13,7 @@ def main():
     print('choose option:')
     [print(f'{x + 1}: {option}') for x, option in enumerate(options)]
     option = int(input()) - 1
-    print(f'option: {option}, {options[option]}')
+    print(f'option: {option + 1}, {options[option]}')
 
     dicts = {}
 
@@ -29,11 +29,13 @@ def main():
         case _:
             print('that operation is not available')
 
+    changed_csvs = 0
     for date, data in dicts.items():
         dataframe = pd.DataFrame.from_dict(data)
         csv = dataframe.to_csv(f'{globals.memes_root}/{date}/{date}.csv', index=True, header=True)
+        changed_csvs += 1
 
-    input('pause')
+    input(f"{changed_csvs} csv's written")
 
 if __name__ == '__main__':
     main()
