@@ -26,7 +26,9 @@ def worker():
             if not word.replace('\n', ' ').strip(): continue
             if round(confs[x], 3) > 50:
                 text += word.strip() + ' '
-        if text.strip(): extracted_text.append(text)
+        if text.strip(): 
+            text = text.replace('|', 'I')
+            extracted_text.append(text)
 
         print(f'text extracted: {text}')
         w.put([meme[0], meme[1], text])

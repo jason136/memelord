@@ -7,6 +7,13 @@ from keras.layers import LSTM
 from keras.utils import np_utils
 
 def main():
+    text = open('dfgg').read()
+    text = text.lower()
+
+    characters = sorted(list(set(text)))
+    n_to_char = {n:char for n, char in enumerate(characters)}
+    char_to_n = {char:n for n, char in enumerate(characters)}
+
     
 
 
