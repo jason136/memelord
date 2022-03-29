@@ -17,9 +17,9 @@ def main():
 
     dicts = {}
 
-    for _, dirs, _ in os.walk(globals.memes_root):
+    for _, dirs, _ in os.walk(globals.memes_path):
         for dir in dirs:
-            dicts[dir] = pd.read_csv(f'{globals.memes_root}/{dir}/{dir}.csv').to_dict(orient='list')
+            dicts[dir] = pd.read_csv(f'{globals.memes_path}/{dir}/{dir}.csv').to_dict(orient='list')
 
     match operation:
         case 0:
@@ -32,7 +32,7 @@ def main():
     changed_csvs = 0
     for date, data in dicts.items():
         dataframe = pd.DataFrame.from_dict(data)
-        csv = dataframe.to_csv(f'{globals.memes_root}/{date}/{date}.csv', index=True, header=True)
+        csv = dataframe.to_csv(f'{globals.memes_path}/{date}/{date}.csv', index=True, header=True)
         changed_csvs += 1
 
     input(f"{changed_csvs} csv's written")

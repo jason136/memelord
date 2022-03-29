@@ -1,4 +1,6 @@
 memes/
+data/
+results/
 tokens.py
 
 # Byte-compiled / optimized / DLL files
