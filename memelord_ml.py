@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-import os, json
+import os, pickle, tqdm
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout
 from string import punctuation
@@ -9,7 +9,7 @@ import globals
 def train():
     sequence_length = 100
     batch_size = 128
-    epochs = 30
+    epochs = 10
 
     filepath = f'{globals.data_path}/extracted_text.txt'
 
@@ -27,8 +27,8 @@ def train():
     char_to_int = {c: i for i, c in enumerate(vocab)}
     int_to_char = {i: c for i, c in enumerate(vocab)}
 
-    json.dump(char_to_int, open(f'{globals.data_path}/char_to_int.json', 'w'))
-    json.dump(int_to_char, open(f'{globals.data_path}/int_to_char.json', 'w'))
+    pickle.dump(char_to_int, open(f'{globals.data_path}/char_to_int.pickle', 'wb'))
+    pickle.dump(int_to_char, open(f'{globals.data_path}/int_to_char.pickle', 'wb'))
 
     encoded_text = np.array([char_to_int[x] for x in text])
     char_dataset = tf.data.Dataset.from_tensor_slices(encoded_text)
@@ -84,5 +84,52 @@ def train():
     model.fit(ds, steps_per_epoch=(len(encoded_text) - sequence_length) // batch_size, epochs=epochs)
     model.save(model_weights_path)
 
+def generate(seed):
+    sequence_length = 100
+    filepath = f'{globals.results_path}/generated.txt'
+    basename = os.path.basename(filepath)
+
+    #seed = 'memeism'
+
+    char_to_int = pickle.load(open(f'{globals.data_path}/char_to_int.pickle', 'rb'))
+    int_to_char = pickle.load(open(f'{globals.data_path}/int_to_char.pickle', 'rb'))
+    vocab_size = len(char_to_int)
+
+    print(char_to_int)
+    print(int_to_char)
+
+    model = Sequential([
+        LSTM(256, input_shape=(sequence_length, vocab_size), return_sequences=True), 
+        Dropout(0.3), 
+        LSTM(256), 
+        Dense(vocab_size, activation='softmax'),
+
+    ])
+    model.load_weights(f'{globals.results_path}/meme neutrons-{sequence_length}.h5')
+
+    s = seed
+    n_chars = 400
+    generated = ''
+
+    for x in tqdm.tqdm(range(n_chars), 'Generating Text'):
+        X = np.zeros((1, sequence_length, vocab_size))
+        X = np.zeros((1, sequence_length, vocab_size))
+        for t, char in enumerate(seed):
+            X[0, (sequence_length - len(seed)) + t, char_to_int[char]] = 1
+        predicted = model.predict(X, verbose=0)[0]
+        next_index = np.argmax(predicted)
+        next_char = int_to_char[next_index]
+        generated += next_char
+        seed = seed[1:] + next_char
+    
+    print('Seed: ', s)
+    print('Generated Text: \n', generated)
+
 if __name__ == '__main__':
-    train()
+
+    print('seed for generate or nothing for train: \n')
+    selection = input()
+    if selection:
+        generate(selection)
+    else:
+        train()

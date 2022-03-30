@@ -46,7 +46,8 @@ def main():
         else:
             text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
         text = re.sub(r'[^\w\s-]', '', text.lower())
-        return re.sub(r'[-\s]+', '-', text).strip('-_')
+        text = re.sub(r'[-\s]+', '-', text).strip('-_')
+        return text[0:200]
 
         
     download_count = 0
